@@ -36,16 +36,15 @@ class BasePage:
         self.wait.until(EC.element_to_be_clickable(locator)).click()
 
     def click_and_wait_for_url(self, locator: Locator, fragment: str) -> None:
-        """Click a React-controlled link and retry once if its first event is dropped."""
+        """Click normally, then use a JavaScript click if navigation is dropped."""
 
-        for attempt in range(2):
-            self.click(locator)
-            try:
-                self.wait_for_url_fragment(fragment)
-                return
-            except TimeoutException:
-                if attempt == 1:
-                    raise
+        self.click(locator)
+        try:
+            self.wait_for_url_fragment(fragment)
+        except TimeoutException:
+            element = self.wait.until(EC.element_to_be_clickable(locator))
+            self.driver.execute_script("arguments[0].click();", element)
+            self.wait_for_url_fragment(fragment)
 
     def type(self, locator: Locator, value: str) -> None:
         element = self.visible(locator)
