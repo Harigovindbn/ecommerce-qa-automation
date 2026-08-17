@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ecommerce-qa-automation"
+version = "0.1.0"
+description = "Selenium QA automation framework for SauceDemo e-commerce workflows"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Harigovind B Nair" }]
+dependencies = [
+  "allure-pytest>=2.15,<3",
+  "python-dotenv>=1.1,<2",
+  "pytest>=9.1,<10",
+  "pytest-html>=4.1,<5",
+  "selenium>=4.47,<5",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.12,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ecommerce_qa"]
+
+[tool.pytest.ini_options]
+addopts = [
+  "-ra",
+  "--strict-markers",
+  "--html=reports/web-report.html",
+  "--self-contained-html",
+  "--alluredir=allure-results",
+]
+testpaths = ["tests"]
+markers = [
+  "smoke: critical checks suitable for every pull request",
+  "regression: broader functional coverage",
+  "e2e: complete business workflow",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
