@@ -1,0 +1,90 @@
+name: Web UI Automation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Ruff and configuration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Run Ruff
+        run: ruff check .
+
+      - name: Run configuration tests
+        run: pytest tests/test_config.py
+
+  browser-smoke:
+    name: ${{ matrix.browser }} smoke tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Start Selenium browser container
+        run: |
+          docker run --detach --name selenium-browser \
+            --publish 4444:4444 --shm-size 2g \
+            selenium/standalone-${{ matrix.browser }}:4.47.0
+
+      - name: Wait for Selenium Grid
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:4444/status \
+              | grep --quiet --extended-regexp '"ready"[[:space:]]*:[[:space:]]*true'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs selenium-browser
+          exit 1
+
+      - name: Run smoke tests
+        env:
+          SELENIUM_REMOTE_URL: http://localhost:4444
+        run: python -m pytest -m smoke --browser ${{ matrix.browser }}
+
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ matrix.browser }}-evidence
+          if-no-files-found: warn
+          path: |
+            reports/
+            screenshots/
+            allure-results/
